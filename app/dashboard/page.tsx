@@ -37,7 +37,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6 md:space-y-8 p-4 md:p-8 max-w-7xl mx-auto">
-      {/* Header - Stacked op mobiel, Row op desktop */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Stats Cards - 1 kolom mobiel, 3 kolommen desktop */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
           <p className="text-slate-500 text-xs md:text-sm font-medium uppercase tracking-wider">
@@ -73,17 +73,15 @@ export default async function DashboardPage() {
             {stats.amount.toLocaleString("nl-NL", { minimumFractionDigits: 2 })}
           </p>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-green-600">
           <p className="text-slate-500 text-xs md:text-sm font-medium uppercase tracking-wider">
             Status
           </p>
-          <p className="text-2xl md:text-3xl font-bold text-green-600">
-            Actief
-          </p>
+          <p className="text-2xl md:text-3xl font-bold">Actief</p>
         </div>
       </div>
 
-      {/* Tabel Sectie */}
+      {/* Recente Offertes Sectie */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="p-5 md:p-6 border-b border-slate-100 flex justify-between items-center">
           <h2 className="text-lg md:text-xl font-bold text-slate-800">
@@ -96,9 +94,33 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
-        {/* Swipe-bare container voor de tabel op mobiel */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[600px] md:min-w-full">
+        {/* 1. Mobiele Lijst Weergave (Zichtbaar op kleine schermen) */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {recentQuotes.map((quote: any) => (
+            <div key={quote.id} className="p-5 space-y-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-bold text-slate-900 truncate max-w-[200px]">
+                    {quote.project_name}
+                  </p>
+                  <p className="text-sm text-slate-500">{quote.client_name}</p>
+                </div>
+                <span className="text-[10px] font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded">
+                  {new Date(quote.created_at).toLocaleDateString("nl-NL")}
+                </span>
+              </div>
+              <Link
+                href={`/dashboard/quotes/${quote.id}`}
+                className="block w-full bg-slate-100 text-slate-700 py-3 rounded-xl text-sm font-bold text-center hover:bg-slate-200 transition active:scale-[0.98]">
+                Bekijken
+              </Link>
+            </div>
+          ))}
+        </div>
+
+        {/* 2. Desktop Tabel Weergave (Alleen op MD+ schermen) */}
+        <div className="hidden md:block">
+          <table className="w-full text-left">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
               <tr>
                 <th className="px-6 py-4 font-semibold">Project</th>
@@ -128,18 +150,16 @@ export default async function DashboardPage() {
                   </td>
                 </tr>
               ))}
-              {recentQuotes.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-6 py-12 text-center text-slate-400">
-                    Geen offertes gevonden. Start door een nieuwe aan te maken.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
+
+        {/* Lege staat */}
+        {recentQuotes.length === 0 && (
+          <div className="px-6 py-12 text-center text-slate-400">
+            Geen offertes gevonden. Start door een nieuwe aan te maken.
+          </div>
+        )}
       </div>
     </div>
   );
