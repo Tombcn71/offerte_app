@@ -62,7 +62,7 @@ export default function Navbar() {
               className="text-sm font-semibold text-slate-700 hover:text-blue-600 transition mr-2">
               Naar Dashboard
             </Link>
-            <UserButton afterSignOutUrl="/" />
+            <UserButton />
           </>
         )}
       </div>
