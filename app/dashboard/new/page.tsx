@@ -88,7 +88,6 @@ export default function NewQuotePage() {
 
     setIsSubmitting(true);
 
-    // Geen try-catch hier zodat de redirect van de Server Action werkt
     const result = await createQuote({
       projectName,
       clientName,
@@ -108,49 +107,61 @@ export default function NewQuotePage() {
       {/* Project Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-bold text-slate-400 ml-1">
-            PROJECTNAAM
+          <label className="text-xs font-bold text-slate-400 ml-1 uppercase">
+            Projectnaam
           </label>
           <input
             value={projectName}
             placeholder="bijv. Renovatie Fam. Jansen"
-            className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition bg-slate-50"
+            className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition bg-slate-50 text-slate-900"
             onChange={(e) => setProjectName(e.target.value)}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-bold text-slate-400 ml-1">
-            KLANTNAAM
+          <label className="text-xs font-bold text-slate-400 ml-1 uppercase">
+            Klantnaam
           </label>
           <input
             value={clientName}
             placeholder="Naam van de klant"
-            className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition bg-slate-50"
+            className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition bg-slate-50 text-slate-900"
             onChange={(e) => setClientName(e.target.value)}
           />
         </div>
       </div>
 
-      {/* Selector */}
+      {/* Selector - GEFIXTE VERSIE */}
       <div className="mb-8">
         <h2 className="font-bold mb-4 text-slate-700">
           Werkzaamheden toevoegen:
         </h2>
         <div className="flex flex-wrap gap-2">
           {Object.entries(SERVICES_DATA).map(([cat, services]) => (
-            <div key={cat} className="group relative">
-              <button className="bg-white border border-slate-200 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-full text-sm font-medium transition shadow-sm">
-                {cat} +
+            <div key={cat} className="relative group">
+              <button
+                type="button"
+                className="bg-white border border-slate-200 group-hover:border-blue-500 group-focus-within:border-blue-500 px-4 py-2 rounded-full text-sm font-medium transition shadow-sm flex items-center gap-1 outline-none">
+                {cat} <span className="text-slate-400">+</span>
               </button>
-              <div className="hidden group-hover:block absolute top-full left-0 bg-white shadow-2xl border border-slate-200 rounded-xl p-2 z-50 w-72 mt-1">
-                {services.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => addItem(cat, s)}
-                    className="block w-full text-left p-2 hover:bg-blue-50 rounded text-xs text-slate-700">
-                    {s}
-                  </button>
-                ))}
+
+              {/* De 'pt-2 -mt-2' creëert de onzichtbare brug zodat het menu niet dichtklapt */}
+              <div className="hidden group-hover:block group-focus-within:block absolute top-full left-0 z-50 w-72 pt-2 -mt-2">
+                <div className="bg-white shadow-2xl border border-slate-200 rounded-xl p-2 animate-in fade-in zoom-in-95 duration-150">
+                  {services.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        addItem(cat, s);
+                        if (document.activeElement instanceof HTMLElement) {
+                          document.activeElement.blur();
+                        }
+                      }}
+                      className="block w-full text-left p-3 hover:bg-blue-600 hover:text-white rounded-lg text-xs text-slate-700 transition-colors font-medium">
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
@@ -167,14 +178,14 @@ export default function NewQuotePage() {
         {items.map((item) => (
           <div
             key={item.id}
-            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative">
+            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative animate-in slide-in-from-top-2">
             <button
               onClick={() => removeItem(item.id)}
               className="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition">
               ✕
             </button>
             <h3 className="font-bold text-blue-600 mb-4 flex items-center gap-2">
-              <span className="bg-blue-50 px-2 py-1 rounded text-[10px] uppercase">
+              <span className="bg-blue-50 px-2 py-1 rounded text-[10px] uppercase tracking-wider">
                 {item.category}
               </span>
               {item.service}
@@ -182,34 +193,34 @@ export default function NewQuotePage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1">
-                  UREN
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">
+                  Uren
                 </label>
                 <input
                   type="number"
-                  className="w-full p-2 border rounded outline-none bg-slate-50"
+                  className="w-full p-2 border rounded outline-none bg-slate-50 text-slate-900"
                   onChange={(e) => updateItem(item.id, "hours", e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1">
-                  MATERIAAL (€)
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">
+                  Materiaal (€)
                 </label>
                 <input
                   type="number"
-                  className="w-full p-2 border rounded outline-none bg-slate-50"
+                  className="w-full p-2 border rounded outline-none bg-slate-50 text-slate-900"
                   onChange={(e) =>
                     updateItem(item.id, "materials", e.target.value)
                   }
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1">
-                  MARGE (%)
+                <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">
+                  Marge (%)
                 </label>
                 <input
                   type="number"
-                  className="w-full p-2 border rounded outline-none bg-slate-50"
+                  className="w-full p-2 border rounded outline-none bg-slate-50 text-slate-900"
                   defaultValue={10}
                   onChange={(e) =>
                     updateItem(item.id, "margin", e.target.value)
@@ -220,7 +231,7 @@ export default function NewQuotePage() {
                 <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">
                   Subtotaal
                 </label>
-                <p className="text-xl font-black">
+                <p className="text-xl font-black text-slate-900">
                   €{" "}
                   {calculateTotal(item).toLocaleString("nl-NL", {
                     minimumFractionDigits: 2,
@@ -236,7 +247,7 @@ export default function NewQuotePage() {
       {items.length > 0 && (
         <div className="mt-10 p-8 bg-slate-900 rounded-3xl text-white flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl">
           <div>
-            <p className="text-slate-400 font-medium">
+            <p className="text-slate-400 font-medium uppercase text-xs tracking-widest">
               Totaalbedrag (Excl. BTW)
             </p>
             <p className="text-4xl font-black text-blue-400">
@@ -249,7 +260,7 @@ export default function NewQuotePage() {
           <button
             onClick={handleSave}
             disabled={isSubmitting}
-            className={`bg-blue-600 hover:bg-blue-500 px-10 py-5 rounded-2xl font-bold transition-all ${isSubmitting ? "opacity-50" : ""}`}>
+            className={`bg-blue-600 hover:bg-blue-500 px-10 py-5 rounded-2xl font-bold transition-all active:scale-95 ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}>
             {isSubmitting
               ? "Bezig met opslaan..."
               : "Offerte Opslaan & Versturen"}
