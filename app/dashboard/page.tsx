@@ -10,7 +10,7 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  let recentQuotes = [];
+  let recentQuotes: any[] = [];
   let stats = { total: 0, amount: 0 };
 
   try {
