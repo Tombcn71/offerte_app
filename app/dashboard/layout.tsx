@@ -8,7 +8,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let categories = [];
+  let categories: any[] = [];
   try {
     categories =
       await sql`SELECT DISTINCT category FROM services ORDER BY category ASC`;
@@ -25,7 +25,7 @@ export default async function DashboardLayout({
       <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 p-6 flex-col gap-8 flex-shrink-0 sticky top-0 h-screen print:hidden">
         <div className="flex items-center justify-between">
           <div className="font-bold text-xl text-blue-600">KlusQuote</div>
-          <UserButton afterSignOutUrl="/" />
+          <UserButton  />
         </div>
 
         <nav className="flex flex-col gap-1">
