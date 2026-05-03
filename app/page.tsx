@@ -1,6 +1,8 @@
 import Navbar from "@/app/components/Navbar";
 import { SignUpButton } from "@clerk/nextjs";
 import Link from "next/link";
+import HowItWorks from "./components/howitworks";
+import Pricing from "./components/pricing";
 
 export default function HomePage() {
   return (
@@ -23,7 +25,8 @@ export default function HomePage() {
           Combineer badkamers, vloeren en schilderwerk naadloos in één offerte.
           Jouw tarieven, jouw materialen, direct klaar voor je klant.
         </p>
-
+        <HowItWorks />
+        <Pricing />
         {/* Button: breed op mobiel, inline op desktop */}
         <div className="w-full md:w-auto inline-block">
           <div className="bg-slate-900 text-white px-8 md:px-10 py-4 rounded-full text-lg font-bold hover:bg-slate-800 transition shadow-lg cursor-pointer w-full">
