@@ -17,15 +17,18 @@ export default function QuoteDetailPage() {
     if (params.id) fetchData();
   }, [params.id]);
 
-  if (!data) return <div className="p-10 text-center font-bold">Laden...</div>;
+  if (!data)
+    return (
+      <div className="p-10 text-center font-bold text-slate-500">
+        Offerte inladen...
+      </div>
+    );
 
   const { quote, items } = data;
 
-  // Berekening van het totaal
+  // Berekening op basis van jouw database kolommen: total_price
   const totalAmount = items.reduce(
-    (acc, item) =>
-      acc +
-      Number(item.hours * item.rate + item.materials) * (1 + item.margin / 100),
+    (acc, item) => acc + Number(item.total_price || 0),
     0,
   );
   const depositAmount = totalAmount * 0.3;
@@ -59,7 +62,7 @@ export default function QuoteDetailPage() {
             </p>
           </div>
           <div className="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-            <p>Offerte-nummer: #2026-{quote.id.substring(0, 8)}</p>
+            <p>Offerte-nummer: #2026-{String(quote.id).substring(0, 8)}</p>
             <p>
               Datum: {new Date(quote.created_at).toLocaleDateString("nl-NL")}
             </p>
@@ -72,9 +75,9 @@ export default function QuoteDetailPage() {
             Beste {quote.client_name},
           </p>
 
-          {/* HIER KOMT DE AI TEKST - whitespace-pre-wrap zorgt voor de enters */}
+          {/* AI BESCHRIJVING UIT QUOTES TABEL */}
           {quote.description ? (
-            <div className="text-slate-600 leading-relaxed text-base whitespace-pre-wrap border-l-4 border-blue-50 pl-6 py-2">
+            <div className="text-slate-600 leading-relaxed text-base whitespace-pre-wrap border-l-4 border-blue-50 pl-6 py-2 italic">
               {quote.description}
             </div>
           ) : (
@@ -96,19 +99,20 @@ export default function QuoteDetailPage() {
                 key={index}
                 className="flex justify-between py-4 border-b border-slate-100 items-center">
                 <div className="flex flex-col">
+                  {/* KLUS NAAM UIT QUOTE_ITEMS TABEL */}
                   <span className="text-slate-900 font-bold text-sm">
-                    {item.service}
+                    {item.description}
                   </span>
-                  <span className="text-[10px] text-slate-400 uppercase font-bold">
-                    {item.category}
-                  </span>
+                  {/* Als je geen category hebt in quote_items, kun je deze regel weghalen */}
+                  {item.category && (
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">
+                      {item.category}
+                    </span>
+                  )}
                 </div>
-                <span className="font-black text-slate-900">
+                <span className="font-black text-slate-900 text-lg">
                   €{" "}
-                  {(
-                    Number(item.hours * item.rate + item.materials) *
-                    (1 + item.margin / 100)
-                  ).toLocaleString("nl-NL", {
+                  {Number(item.total_price).toLocaleString("nl-NL", {
                     minimumFractionDigits: 2,
                   })}
                 </span>
@@ -121,7 +125,7 @@ export default function QuoteDetailPage() {
         <div className="bg-slate-900 p-8 rounded-[1.5rem] text-white flex flex-col gap-4 mt-16">
           <div className="flex justify-between text-slate-400 font-bold text-xs uppercase tracking-widest">
             <span>Totaalbedrag (excl. BTW)</span>
-            <span className="text-white text-lg">
+            <span className="text-white text-2xl font-black">
               €{" "}
               {totalAmount.toLocaleString("nl-NL", {
                 minimumFractionDigits: 2,
