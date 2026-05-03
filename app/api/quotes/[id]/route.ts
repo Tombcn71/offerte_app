@@ -3,18 +3,20 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }, // We maken er een Promise van
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const resolvedParams = await params; // Wacht op de ID
+    const resolvedParams = await params;
     const quoteId = resolvedParams.id;
 
     if (!quoteId) {
       return NextResponse.json({ error: "Geen ID gevonden" }, { status: 400 });
     }
 
-    // Haal data op
+    // We halen alles op uit de quotes tabel (inclusief de 'description' kolom)
     const [quote] = await sql`SELECT * FROM quotes WHERE id = ${quoteId}`;
+
+    // We halen de losse werkzaamheden op
     const items =
       await sql`SELECT * FROM quote_items WHERE quote_id = ${quoteId}`;
 
