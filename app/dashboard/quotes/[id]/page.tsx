@@ -1,40 +1,39 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { neon } from "@neondatabase/serverless";
+import { auth } from "@clerk/nextjs/server";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 
-export default function QuoteDetailPage() {
-  const params = useParams();
-  const [data, setData] = useState<{ quote: any; items: any[] } | null>(null);
+export default async function QuoteDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const { userId } = await auth();
+  const { id } = params;
+  const sql = neon(process.env.DATABASE_URL!);
 
-  useEffect(() => {
-    async function fetchData() {
-      const response = await fetch(`/api/quotes/${params.id}`);
-      const json = await response.json();
-      setData(json);
-    }
-    if (params.id) fetchData();
-  }, [params.id]);
+  // 1. Haal alle data op uit de database
+  const [quote] =
+    await sql`SELECT * FROM quotes WHERE id = ${id} AND user_id = ${userId}`;
+  if (!quote) return notFound();
 
-  if (!data)
-    return (
-      <div className="p-10 text-center font-bold text-slate-500">
-        Offerte inladen...
-      </div>
-    );
+  const items = await sql`SELECT * FROM quote_items WHERE quote_id = ${id}`;
+  const [profile] =
+    await sql`SELECT * FROM contractor_profile WHERE user_id = ${userId}`;
 
-  const { quote, items } = data;
+  // 2. Berekeningen
+  const totalAmount = items.reduce((acc, item) => {
+    // We rekenen uit: (uren * tarief + materiaal) + marge
+    const base = item.hours * item.rate + Number(item.materials);
+    const withMargin = base * (1 + item.margin / 100);
+    return acc + withMargin;
+  }, 0);
 
-  const totalAmount = items.reduce(
-    (acc, item) => acc + Number(item.total_price || 0),
-    0,
-  );
   const depositAmount = totalAmount * 0.3;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20 p-4">
-      {/* Navigatie & Print Knop */}
+      {/* Navigatie & Print Knop (onzichtbaar op print) */}
       <div className="flex justify-between items-center print:hidden">
         <Link
           href="/dashboard"
@@ -43,47 +42,49 @@ export default function QuoteDetailPage() {
         </Link>
         <button
           onClick={() => window.print()}
-          className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black shadow-lg hover:bg-blue-700 active:scale-95 transition">
+          className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black shadow-lg hover:bg-blue-700 transition">
           PDF Opslaan / Printen
         </button>
       </div>
 
-      {/* DE BRIEF */}
-      <div className="bg-white p-12 rounded-[2rem] border border-slate-200 shadow-xl print:shadow-none print:border-none print:p-0">
-        {/* Header */}
+      {/* DE BRIEF (Het gedeelte dat geprint wordt) */}
+      <div className="bg-white p-12 rounded-[2rem] border border-slate-200 shadow-xl print:shadow-none print:border-none print:p-0 text-slate-900">
+        {/* Header met jouw Logo */}
         <div className="flex justify-between items-start mb-16">
           <div>
-            <h2 className="text-3xl font-black text-blue-600 tracking-tighter uppercase">
-              Mijn Bouwbedrijf
-            </h2>
-            <p className="text-xs text-slate-400 mt-1 font-bold tracking-widest">
-              VAKMANSCHAP OP MAAT
+            {profile?.logo_url ? (
+              <img
+                src={profile.logo_url}
+                alt="Logo"
+                className="h-20 object-contain mb-4"
+              />
+            ) : (
+              <h2 className="text-3xl font-black text-blue-600 tracking-tighter uppercase">
+                {profile?.company_name || "Mijn Bedrijf"}
+              </h2>
+            )}
+            <p className="text-[10px] text-slate-400 mt-1 font-bold tracking-widest uppercase">
+              {profile?.company_name} — Factuuradres:{" "}
+              {profile?.address || "Adres niet ingesteld"}
             </p>
           </div>
           <div className="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-            <p>Offerte-nummer: #2026-{String(quote.id).substring(0, 8)}</p>
+            <p>Offerte-nummer: #2026-{id.substring(0, 5).toUpperCase()}</p>
             <p>
               Datum: {new Date(quote.created_at).toLocaleDateString("nl-NL")}
             </p>
           </div>
         </div>
 
-        {/* Introductie & AI Tekst */}
+        {/* Introductie */}
         <div className="mb-12 space-y-6">
-          <p className="font-black text-xl text-slate-900 tracking-tight">
+          <p className="font-black text-xl tracking-tight">
             Beste {quote.client_name},
           </p>
-
-          {quote.description ? (
-            <div className="text-slate-600 leading-relaxed text-base whitespace-pre-wrap">
-              {quote.description}
-            </div>
-          ) : (
-            <p className="text-slate-600 leading-relaxed">
-              Hierbij ontvangt u de offerte voor het project{" "}
-              <strong>"{quote.project_name}"</strong>.
-            </p>
-          )}
+          <div className="text-slate-600 leading-relaxed text-base whitespace-pre-wrap italic">
+            {quote.description ||
+              `Hierbij ontvangt u de offerte voor het project "${quote.project_name}".`}
+          </div>
         </div>
 
         {/* Tabel met werkzaamheden */}
@@ -91,30 +92,40 @@ export default function QuoteDetailPage() {
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
             Specificatie werkzaamheden
           </h3>
-          <div className="border-t border-slate-200">
-            {items.map((item, index) => (
-              <div
-                key={index}
-                className="flex justify-between py-4 border-b border-slate-100 items-center">
-                <span className="text-slate-800 font-medium text-sm">
-                  {item.description}
-                </span>
-                <span className="font-bold text-slate-900">
-                  €{" "}
-                  {Number(item.total_price).toLocaleString("nl-NL", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-            ))}
+          <div className="border-t-2 border-slate-900">
+            {items.map((item, index) => {
+              const itemTotal =
+                (item.hours * item.rate + Number(item.materials)) *
+                (1 + item.margin / 100);
+              return (
+                <div
+                  key={index}
+                  className="flex justify-between py-5 border-b border-slate-100 items-start">
+                  <div className="max-w-[70%]">
+                    <p className="text-slate-800 font-bold text-sm">
+                      {item.service}
+                    </p>
+                    <p className="text-[10px] text-slate-400 uppercase mt-1">
+                      {item.category}
+                    </p>
+                  </div>
+                  <span className="font-bold text-slate-900 text-sm">
+                    €{" "}
+                    {itemTotal.toLocaleString("nl-NL", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Financiële Afsluiting (Nu wit en passend bij de brief) */}
-        <div className="mt-12 space-y-3 border-t-2 border-slate-900 pt-6">
-          <div className="flex justify-between items-center text-slate-500 font-bold text-sm">
+        {/* Financiële Afsluiting */}
+        <div className="mt-12 space-y-4 bg-slate-50 p-8 rounded-3xl">
+          <div className="flex justify-between items-center text-slate-500 font-bold text-xs uppercase tracking-widest">
             <span>Totaalbedrag (excl. BTW)</span>
-            <span className="text-slate-900 text-lg">
+            <span className="text-slate-900 text-xl font-black">
               €{" "}
               {totalAmount.toLocaleString("nl-NL", {
                 minimumFractionDigits: 2,
@@ -122,16 +133,16 @@ export default function QuoteDetailPage() {
             </span>
           </div>
 
-          <div className="flex justify-between items-center pt-2">
+          <div className="flex justify-between items-center pt-4 border-t border-slate-200">
             <div>
               <p className="text-blue-600 font-black text-sm uppercase tracking-tight">
-                Aanbetaling (30%)
+                Gevraagde aanbetaling (30%)
               </p>
               <p className="text-[10px] text-slate-400">
-                Voldoen voor aanvang werkzaamheden
+                Graag overmaken naar IBAN: {profile?.iban || "Onbekend"}
               </p>
             </div>
-            <p className="text-2xl font-black text-blue-600">
+            <p className="text-3xl font-black text-blue-600">
               €{" "}
               {depositAmount.toLocaleString("nl-NL", {
                 minimumFractionDigits: 2,
@@ -140,14 +151,24 @@ export default function QuoteDetailPage() {
           </div>
         </div>
 
-        {/* Footer voetnoten */}
-        <div className="mt-16 pt-8 border-t border-slate-100 text-[10px] text-slate-400 font-medium space-y-1">
-          <p>* Deze offerte is 30 dagen geldig.</p>
-          <p>
-            * Na ontvangst van de aanbetaling wordt de planning definitief
-            bevestigd.
-          </p>
-          <p>* Alle prijzen zijn exclusief BTW.</p>
+        {/* Footer Bedrijfsgegevens */}
+        <div className="mt-16 pt-8 border-t border-slate-100 grid grid-cols-2 gap-8">
+          <div className="text-[10px] text-slate-400 font-medium space-y-1">
+            <p className="font-bold text-slate-600 uppercase mb-1 underline">
+              Voorwaarden
+            </p>
+            <p>* Deze offerte is 30 dagen geldig.</p>
+            <p>* Planning wordt bevestigd na ontvangst aanbetaling.</p>
+            <p>* Alle prijzen zijn exclusief 21% BTW.</p>
+          </div>
+          <div className="text-[10px] text-slate-400 font-medium text-right space-y-1">
+            <p className="font-bold text-slate-600 uppercase mb-1 underline">
+              Bedrijfsgegevens
+            </p>
+            <p>{profile?.company_name}</p>
+            <p>KvK: {profile?.kvk_number || "—"}</p>
+            <p>BTW: {profile?.btw_number || "—"}</p>
+          </div>
         </div>
       </div>
     </div>
