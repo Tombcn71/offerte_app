@@ -44,11 +44,11 @@ export default function HowItWorks() {
   ];
 
   return (
-    /* mt-64 zet de grijze lijn een enorm stuk lager dan de hero */
-    <section className="relative bg-white mt-43 pt-32 pb-32 px-4 border-t border-slate-100">
+    /* mt-[50vh] houdt de lijn laag onder de hero, pt-12 zet de titels een stuk hoger dan net */
+    <section className="relative bg-white mt-[50vh] pt-12 pb-32 px-4 border-t border-slate-100">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-20">
-          <h2 className="text-sm font-bold text-blue-600 tracking-wider mb-3">
+        <div className="mb-16">
+          <h2 className="text-sm font-bold text-blue-600 tracking-wider mb-2">
             Het proces
           </h2>
           <p className="text-4xl font-black text-slate-900 tracking-tight">
