@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { auth } from "@clerk/nextjs/server";
 
-// We gebruiken hier de GoogleGenAI class van de @google/genai package
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// We initialiseren de AI met v1 om de 404/v1beta fouten te omzeilen
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: { apiVersion: "v1" },
+});
 
 export async function POST(req: Request) {
   try {
@@ -18,40 +21,37 @@ export async function POST(req: Request) {
       .map((i: any) => `- ${i.category}: ${i.service}`)
       .join("\n");
 
-    // We roepen hier expliciet gemini-3-flash aan
-    const result = await ai.models.generateContent({
-      model: "gemini-3-flash",
+    // We gebruiken het model uit jouw voorbeeld
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
       contents: [
         {
           role: "user",
           parts: [
             {
-              text: `Schrijf een professionele introductie voor een offerte.
+              text: `Schrijf een korte, professionele introductie voor een offerte in het Nederlands.
                      Klant: ${clientName}
                      Project: ${projectName}
                      Werkzaamheden:
                      ${werkzaamheden}
                      
-                     Instructies:
-                     - Taal: Nederlands.
-                     - Maximaal 2 paragrafen.
-                     - Geen placeholders zoals [Naam].`,
+                     Instructies: Maximaal 2 korte alinea's, geen placeholders.`,
             },
           ],
         },
       ],
     });
 
-    // Let op: bij @google/genai is de response direct beschikbaar via result.text
-    const text = result.text;
+    // In de @google/genai SDK is de tekst direct beschikbaar op de response
+    const text = response.text;
 
     if (!text) {
-      throw new Error("Geen tekst gegenereerd door AI");
+      throw new Error("Geen tekst ontvangen van de AI");
     }
 
     return NextResponse.json({ text });
   } catch (error: any) {
-    console.error("Gemini 3 Error:", error);
+    console.error("Gemini 3 API Error:", error);
     return NextResponse.json(
       { error: "AI Error: " + error.message },
       { status: 500 },
