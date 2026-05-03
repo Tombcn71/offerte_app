@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createQuote } from "@/app/actions/quotes";
+import { Sparkles, Loader2 } from "lucide-react"; // Zorg dat je lucide-react hebt
 
 const SERVICES_DATA = {
   Badkamer: [
@@ -50,6 +51,10 @@ export default function NewQuotePage() {
   const [clientName, setClientName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // AI States
+  const [description, setDescription] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const addItem = (category: string, service: string) => {
     setItems([
       ...items,
@@ -80,6 +85,38 @@ export default function NewQuotePage() {
     return subtotal * (1 + item.margin / 100);
   };
 
+  // GEMINI AI FUNCTIE
+  const generateAIDescription = async () => {
+    if (!projectName || items.length === 0) {
+      alert("Vul eerst een projectnaam in en voeg werkzaamheden toe.");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const res = await fetch("/api/generate-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectName,
+          clientName,
+          items: items.map((i) => ({
+            service: i.service,
+            category: i.category,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.text) {
+        setDescription(data.text);
+      }
+    } catch (error) {
+      console.error("AI Generation failed", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!projectName || items.length === 0) {
       alert("Vul een projectnaam in en voeg minimaal één onderdeel toe.");
@@ -92,6 +129,7 @@ export default function NewQuotePage() {
       projectName,
       clientName,
       items,
+      description, // Vergeet niet de beschrijving mee te sturen naar je action
     });
 
     if (result?.error) {
@@ -130,7 +168,7 @@ export default function NewQuotePage() {
         </div>
       </div>
 
-      {/* Selector - GEFIXTE VERSIE */}
+      {/* Selector */}
       <div className="mb-8">
         <h2 className="font-bold mb-4 text-slate-700">
           Werkzaamheden toevoegen:
@@ -143,10 +181,8 @@ export default function NewQuotePage() {
                 className="bg-white border border-slate-200 group-hover:border-blue-500 group-focus-within:border-blue-500 px-4 py-2 rounded-full text-sm font-medium transition shadow-sm flex items-center gap-1 outline-none">
                 {cat} <span className="text-slate-400">+</span>
               </button>
-
-              {/* De 'pt-2 -mt-2' creëert de onzichtbare brug zodat het menu niet dichtklapt */}
               <div className="hidden group-hover:block group-focus-within:block absolute top-full left-0 z-50 w-72 pt-2 -mt-2">
-                <div className="bg-white shadow-2xl border border-slate-200 rounded-xl p-2 animate-in fade-in zoom-in-95 duration-150">
+                <div className="bg-white shadow-2xl border border-slate-200 rounded-xl p-2">
                   {services.map((s) => (
                     <button
                       key={s}
@@ -169,7 +205,7 @@ export default function NewQuotePage() {
       </div>
 
       {/* Lijst */}
-      <div className="space-y-4">
+      <div className="space-y-4 mb-8">
         {items.length === 0 && (
           <div className="border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center text-slate-400 font-medium bg-white">
             Nog geen onderdelen toegevoegd. Kies hierboven een categorie.
@@ -242,6 +278,39 @@ export default function NewQuotePage() {
           </div>
         ))}
       </div>
+
+      {/* AI BESCHRIJVING SECTIE */}
+      {items.length > 0 && (
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8 animate-in fade-in duration-500">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-slate-700 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-500" /> Begeleidende Tekst
+            </h3>
+            <button
+              onClick={generateAIDescription}
+              disabled={isGenerating}
+              className="text-xs font-bold flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-full hover:bg-blue-100 transition disabled:opacity-50">
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" /> Denken...
+                </>
+              ) : (
+                "✨ Genereer met AI"
+              )}
+            </button>
+          </div>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full p-4 border rounded-xl h-40 text-sm text-slate-600 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none transition leading-relaxed"
+            placeholder="De AI schrijft hier een professionele introductie en werkomschrijving op basis van je gekozen diensten..."
+          />
+          <p className="text-[10px] text-slate-400 mt-2 italic">
+            Tip: De AI gebruikt je projectnaam en gekozen werkzaamheden om een
+            persoonlijk verhaal te schrijven.
+          </p>
+        </div>
+      )}
 
       {/* Footer */}
       {items.length > 0 && (

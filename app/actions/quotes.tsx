@@ -8,6 +8,7 @@ export async function createQuote(formData: {
   projectName: string;
   clientName: string;
   items: any[];
+  description?: string; // STAP 1: Voeg dit toe aan de type definitie
 }) {
   const { userId } = await auth();
 
@@ -15,21 +16,24 @@ export async function createQuote(formData: {
     return { error: "Je moet ingelogd zijn om een offerte te maken." };
   }
 
-  const { projectName, clientName, items } = formData;
+  // STAP 2: Destructureer de description uit formData
+  const { projectName, clientName, items, description } = formData;
 
-  // We gebruiken een variabele om bij te houden of de database actie geslaagd is
   let success = false;
 
   try {
     await sql.begin(async (sql) => {
+      // STAP 3: Voeg de kolom 'description' toe aan de INSERT query
       const [quote] = await sql`
-        INSERT INTO quotes (project_name, client_name, user_id)
-        VALUES (${projectName}, ${clientName}, ${userId})
+        INSERT INTO quotes (project_name, client_name, user_id, description)
+        VALUES (${projectName}, ${clientName}, ${userId}, ${description || ""})
         RETURNING id
       `;
 
       const insertRows = items.map((item) => ({
         quote_id: quote.id,
+        // Let op: 'description' in quote_items is de regel-tekst (bijv: "Badkamer: Tegels")
+        // De 'description' van de quote zelf is de AI-begeleidende tekst.
         description: `${item.category}: ${item.service}`,
         hours: item.hours || 0,
         hourly_rate: item.rate || 0,
@@ -64,7 +68,6 @@ export async function createQuote(formData: {
     };
   }
 
-  // Belangrijk: redirect ALTIJD buiten het try-catch blok!
   if (success) {
     redirect("/dashboard");
   }
