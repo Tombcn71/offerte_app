@@ -1,74 +1,52 @@
 "use server";
 
-import { sql } from "@/lib/db";
-import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
+import { neon } from "@neondatabase/serverless";
+import { redirect } from "next/navigation";
 
-export async function createQuote(formData: {
+export async function createQuote(data: {
   projectName: string;
   clientName: string;
   items: any[];
-  description?: string; // STAP 1: Voeg dit toe aan de type definitie
+  description: string; // Voeg dit toe zodat TS niet klaagt
 }) {
   const { userId } = await auth();
+  if (!userId) throw new Error("Niet ingelogd");
 
-  if (!userId) {
-    return { error: "Je moet ingelogd zijn om een offerte te maken." };
-  }
-
-  // STAP 2: Destructureer de description uit formData
-  const { projectName, clientName, items, description } = formData;
-
-  let success = false;
+  const sql = neon(process.env.DATABASE_URL!);
+  let quoteId: string;
 
   try {
-    await sql.begin(async (sql) => {
-      // STAP 3: Voeg de kolom 'description' toe aan de INSERT query
-      const [quote] = await sql`
-        INSERT INTO quotes (project_name, client_name, user_id, description)
-        VALUES (${projectName}, ${clientName}, ${userId}, ${description || ""})
-        RETURNING id
-      `;
+    // 1. Maak de offerte aan en sla de AI beschrijving op
+    const [quote] = await sql`
+      INSERT INTO quotes (project_name, client_name, user_id, description)
+      VALUES (${data.projectName}, ${data.clientName}, ${userId}, ${data.description})
+      RETURNING id
+    `;
 
-      const insertRows = items.map((item) => ({
-        quote_id: quote.id,
-        // Let op: 'description' in quote_items is de regel-tekst (bijv: "Badkamer: Tegels")
-        // De 'description' van de quote zelf is de AI-begeleidende tekst.
-        description: `${item.category}: ${item.service}`,
-        hours: item.hours || 0,
-        hourly_rate: item.rate || 0,
-        material_costs: item.materials || 0,
-        margin_pct: item.margin || 0,
-        total_price:
-          (Number(item.hours || 0) * Number(item.rate || 0) +
-            Number(item.materials || 0)) *
-          (1 + Number(item.margin || 0) / 100),
-      }));
+    quoteId = quote.id;
 
+    // 2. Sla alle losse werkzaamheden op in de 'quote_items' tabel
+    // We gebruiken een for-loop om alle items uit de array erin te zetten
+    for (const item of data.items) {
       await sql`
-        INSERT INTO quote_items ${sql(
-          insertRows,
-          "quote_id",
-          "description",
-          "hours",
-          "hourly_rate",
-          "material_costs",
-          "margin_pct",
-          "total_price",
-        )}
+        INSERT INTO quote_items (quote_id, category, service, hours, rate, materials, margin)
+        VALUES (
+          ${quoteId}, 
+          ${item.category}, 
+          ${item.service}, 
+          ${item.hours}, 
+          ${item.rate}, 
+          ${item.materials}, 
+          ${item.margin}
+        )
       `;
-    });
-
-    success = true;
+    }
   } catch (error) {
-    console.error("Database error:", error);
-    return {
-      error:
-        "Fout bij opslaan in de database. Controleer of alle velden correct zijn.",
-    };
+    console.error("Database Error:", error);
+    return { error: "Kon de offerte niet opslaan in de database." };
   }
 
-  if (success) {
-    redirect("/dashboard");
-  }
+  // 3. Stuur de gebruiker door naar de overzichtspagina of de PDF-weergave
+  redirect(`/dashboard/quotes/${quoteId}`);
 }
