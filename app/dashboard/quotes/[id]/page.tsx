@@ -2,7 +2,7 @@ import { neon } from "@neondatabase/serverless";
 import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import PrintButton from "@/app/components/PrintButton"; // Importeer je eigen knop
+import PrintButton from "@/app/components/PrintButton";
 
 export default async function QuoteDetailPage({
   params,
@@ -22,135 +22,234 @@ export default async function QuoteDetailPage({
   const [profile] =
     await sql`SELECT * FROM contractor_profile WHERE user_id = ${userId}`;
 
-  // 2. Totaal berekenen
-  const totalAmount = items.reduce(
+  // 2. Berekeningen
+  const subtotal = items.reduce(
     (acc, item) => acc + Number(item.total_price || 0),
     0,
   );
-  const depositAmount = totalAmount * 0.3;
+  const discountAmount = subtotal * 0.05;
+  const subtotalAfterDiscount = subtotal - discountAmount;
+  const btwAmount = subtotalAfterDiscount * 0.21;
+  const totalInclBtw = subtotalAfterDiscount + btwAmount;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20 p-4">
-      {/* Navigatie balk */}
-      <div className="flex justify-between items-center print:hidden">
+    <div className="max-w-[850px] mx-auto pb-20 p-4 font-sans text-black leading-tight">
+      {/* Navigatie (onzichtbaar bij print) */}
+      <div className="flex justify-between items-center mb-8 print:hidden">
         <Link
           href="/dashboard"
-          className="text-sm font-bold text-slate-500 hover:text-blue-600 transition">
-          ← Terug naar dashboard
+          className="text-sm font-bold text-slate-500 hover:underline">
+          ← Terug
         </Link>
-
-        {/* HIER GEBRUIKEN WE JOUW KNOP */}
         <PrintButton />
       </div>
 
-      {/* De Brief */}
-      <div className="bg-white p-12 rounded-[2rem] border border-slate-200 shadow-xl print:shadow-none print:border-none print:p-0 text-slate-900">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-16">
-          <div>
+      <div className="bg-white p-12 border border-slate-100 shadow-sm print:border-none print:p-0">
+        {/* HEADER: Alleen Logo en Bedrijfsgegevens, geen titels */}
+        <div className="flex justify-between items-start border-b-2 border-black pb-8 mb-12">
+          <div className="flex items-center gap-6">
             {profile?.logo_url ? (
               <img
                 src={profile.logo_url}
                 alt="Logo"
-                className="h-20 object-contain mb-4"
+                className="h-24 w-auto object-contain"
               />
             ) : (
-              <h2 className="text-3xl font-black text-blue-600 tracking-tighter uppercase">
-                {profile?.company_name || "Mijn Bedrijf"}
-              </h2>
-            )}
-            <p className="text-[10px] text-slate-400 mt-1 font-bold tracking-widest uppercase">
-              {profile?.company_name} —{" "}
-              {profile?.address || "Adres niet ingesteld"}
-            </p>
-          </div>
-          <div className="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-            <p>Offerte-nummer: #2026-{id.substring(0, 5).toUpperCase()}</p>
-            <p>
-              Datum: {new Date(quote.created_at).toLocaleDateString("nl-NL")}
-            </p>
-          </div>
-        </div>
-
-        {/* Intro */}
-        <div className="mb-12 space-y-6">
-          <p className="font-black text-xl tracking-tight">
-            Beste {quote.client_name},
-          </p>
-          <div className="text-slate-600 leading-relaxed text-base whitespace-pre-wrap italic">
-            {quote.description}
-          </div>
-        </div>
-
-        {/* Items Tabel */}
-        <div className="mb-10">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-            Specificatie
-          </h3>
-          <div className="border-t-2 border-slate-900">
-            {items.map((item, index) => (
-              <div
-                key={index}
-                className="flex justify-between py-5 border-b border-slate-100 items-start">
-                <div>
-                  <p className="text-slate-800 font-bold text-sm">
-                    {item.description}
-                  </p>
-                  <p className="text-[10px] text-slate-400 uppercase mt-1">
-                    {item.category}
-                  </p>
-                </div>
-                <span className="font-bold text-slate-900 text-sm">
-                  €{" "}
-                  {Number(item.total_price).toLocaleString("nl-NL", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
+              <div className="h-16 w-16 bg-black flex items-center justify-center text-white font-black text-xl">
+                {profile?.company_name?.substring(0, 1)}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Financiën */}
-        <div className="mt-12 space-y-4 bg-slate-50 p-8 rounded-3xl">
-          <div className="flex justify-between items-center text-slate-500 font-bold text-xs uppercase tracking-widest">
-            <span>Totaalbedrag (excl. BTW)</span>
-            <span className="text-slate-900 text-xl font-black">
-              €{" "}
-              {totalAmount.toLocaleString("nl-NL", {
-                minimumFractionDigits: 2,
-              })}
-            </span>
-          </div>
-          <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+            )}
             <div>
-              <p className="text-blue-600 font-black text-sm uppercase tracking-tight">
-                Aanbetaling (30%)
-              </p>
-              <p className="text-[12px] text-slate-600">
-                IBAN: {profile?.iban || "Onbekend"}
+              <h1 className="text-2xl font-black uppercase">
+                {profile?.company_name}
+              </h1>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                {profile?.address}
               </p>
             </div>
-            <p className="text-3xl font-black text-blue-600">
-              €{" "}
-              {depositAmount.toLocaleString("nl-NL", {
-                minimumFractionDigits: 2,
-              })}
+          </div>
+          <div className="text-right text-[10px] font-bold uppercase space-y-1">
+            <p className="text-slate-400">
+              Datum: {new Date(quote.created_at).toLocaleDateString("nl-NL")}
+            </p>
+            <p>Kenmerk: #2026-{id.substring(0, 5).toUpperCase()}</p>
+          </div>
+        </div>
+
+        {/* Adresblokken */}
+        <div className="grid grid-cols-2 gap-20 mb-16 text-[13px]">
+          <div className="space-y-1 text-slate-600">
+            <p className="font-bold border-b border-black mb-3 uppercase text-[10px] text-black">
+              Opdrachtgever
+            </p>
+            <p className="font-bold text-black text-base">
+              {quote.client_name}
+            </p>
+            <p>{quote.client_email}</p>
+          </div>
+          <div className="space-y-1 text-right text-slate-600">
+            <p className="font-bold border-b border-black mb-3 uppercase text-[10px] text-black text-right">
+              Opdrachtnemer
+            </p>
+            <p className="font-bold text-black text-base">
+              {profile?.company_name}
+            </p>
+            <p>{profile?.email}</p>
+            <p>
+              KvK: {profile?.kvk_number} | BTW: {profile?.btw_number}
             </p>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-16 pt-8 border-t border-slate-100 grid grid-cols-2 gap-8 text-[10px] text-slate-400 uppercase font-bold">
-          <div className="space-y-1">
-            <p className="text-slate-600 underline">Voorwaarden</p>
-            <p>Geldigheid: 30 dagen</p>
-            <p>Prijzen excl. 21% BTW</p>
+        {/* De Werkzaamheden */}
+        <div className="mb-12">
+          <h3 className="font-bold uppercase text-xs mb-6 border-l-4 border-black pl-4">
+            Specificatie van de werkzaamheden
+          </h3>
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="border-b border-slate-200 text-left font-bold text-[10px] text-slate-400">
+                <th className="py-2">Onderdeel</th>
+                <th className="py-2">Nummer</th>
+                <th className="py-2 text-right">Aantal</th>
+                <th className="py-2 text-right">Tarief</th>
+                <th className="py-2 text-right">Bedrag</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {items.map((item, i) => (
+                <tr key={i}>
+                  <td className="py-4 font-bold">{item.description}</td>
+                  <td className="py-4 text-slate-400 font-mono text-[10px]">
+                    ABC0{i + 1}
+                  </td>
+                  <td className="py-4 text-right">
+                    {Number(item.quantity).toFixed(2)}
+                  </td>
+                  <td className="py-4 text-right">
+                    €{" "}
+                    {Number(item.price).toLocaleString("nl-NL", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td className="py-4 text-right font-bold text-black">
+                    €{" "}
+                    {Number(item.total_price).toLocaleString("nl-NL", {
+                      minimumFractionDigits: 2,
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Rekensom */}
+        <div className="flex justify-end mb-20">
+          <div className="w-64 space-y-2 text-[13px] border-t-2 border-black pt-4">
+            <div className="flex justify-between">
+              <span>Subtotaal:</span>
+              <span>
+                €{" "}
+                {subtotal.toLocaleString("nl-NL", { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex justify-between text-slate-400 italic text-xs">
+              <span>Korting (5%):</span>
+              <span>
+                - €{" "}
+                {discountAmount.toLocaleString("nl-NL", {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+            <div className="flex justify-between border-t border-slate-100 pt-2">
+              <span>BTW 21%:</span>
+              <span>
+                €{" "}
+                {btwAmount.toLocaleString("nl-NL", {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+            <div className="flex justify-between font-black text-lg border-t-2 border-black pt-2">
+              <span>Totaal:</span>
+              <span>
+                €{" "}
+                {totalInclBtw.toLocaleString("nl-NL", {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
+            </div>
           </div>
-          <div className="text-right space-y-1">
-            <p className="text-slate-600 underline">Gegevens</p>
-            <p>KvK: {profile?.kvk_number}</p>
-            <p>BTW: {profile?.btw_number}</p>
+        </div>
+
+        {/* Tekstblokken */}
+        <div className="space-y-8 text-[13px] mb-20 leading-relaxed max-w-2xl">
+          <p>
+            De werkzaamheden worden uitgevoerd op locatie van de opdrachtgever (
+            {quote.client_name}), conform opgave.
+          </p>
+          <p>
+            Genoemde bedragen zijn exclusief 21% B.T.W. Meerwerk kan in overleg
+            worden uitgevoerd tegen uurtarief van €{" "}
+            {profile?.hourly_rate || "55,00"} excl. BTW.
+          </p>
+          <p className="italic text-slate-600">
+            Ik vertrouw erop dat deze opgave u aanleiding zal zijn uw opdracht
+            aan mij te verlenen.
+          </p>
+          <div className="pt-4">
+            <p>Met vriendelijke groet,</p>
+            <p className="font-bold uppercase mt-1">{profile?.company_name}</p>
+          </div>
+        </div>
+
+        {/* Antwoordformulier */}
+        <div className="border-t-4 border-black pt-12 mt-20">
+          <h2 className="text-xl font-black uppercase mb-8 border-b border-black pb-2">
+            Antwoordformulier
+          </h2>
+          <div className="grid grid-cols-2 gap-8 text-[12px] mb-12">
+            <p className="border-b border-slate-200 pb-1">
+              Kenmerk: #2026-{id.substring(0, 5).toUpperCase()}
+            </p>
+            <p className="border-b border-slate-200 pb-1">
+              Start project: ...........................................
+            </p>
+          </div>
+
+          <div className="space-y-12">
+            <div className="bg-slate-50 p-6">
+              <p className="text-[12px] font-bold mb-1">Investering</p>
+              <p className="text-xl font-black italic">
+                €{" "}
+                {totalInclBtw.toLocaleString("nl-NL", {
+                  minimumFractionDigits: 2,
+                })}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-16 pt-10">
+              <div className="space-y-8">
+                <p className="font-bold text-[10px] tracking-widest border-b border-black pb-1 uppercase">
+                  Akkoordverklaring
+                </p>
+                <div className="space-y-4">
+                  <p className="border-b border-slate-300 pb-1 text-[11px]">
+                    Naam: {quote.client_name}
+                  </p>
+                  <p className="border-b border-slate-300 pb-1 text-[11px]">
+                    Datum: ...........................................
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-lg h-44 bg-white">
+                <span className="text-[10px] uppercase font-bold text-slate-400">
+                  Handtekening
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
